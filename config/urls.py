@@ -22,9 +22,10 @@ from django.conf import settings
 urlpatterns = [
     path('', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
+    path('api/', include('apps.rides.urls'))
 ]
 
 if settings.DEBUG:
     from debug_toolbar.toolbar import debug_toolbar_urls
 
-    urlpatterns += debug_toolbar_urls() + [path('api/', include('apps.rides.urls'))]
+    urlpatterns += debug_toolbar_urls()
