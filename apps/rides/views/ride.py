@@ -3,14 +3,12 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Prefetch
 from django.utils import timezone
-from rest_framework.decorators import action
-from http import HTTPMethod
-from rest_framework.permissions import IsAdminUser
 
 from ..models import Ride, RideEvent
 from ..serializers import RideListSerializer, RideListQueryParamSerializer
 from ..filters import RideOrdering, RideFiltering
 from ..utils import validate_query_params
+from apps.users.permissions import AdministratorPermission
 
 class StandardRidePagination(PageNumberPagination):
     page_size = 10
@@ -19,7 +17,7 @@ class StandardRidePagination(PageNumberPagination):
     max_page_size = 20
     
 class RideViewSet(ModelViewSet):
-    permission_classes = [IsAdminUser]
+    permission_classes = [AdministratorPermission]
     pagination_class = StandardRidePagination
     filter_backends = [RideOrdering, RideFiltering]
     serializer_class = RideListSerializer
@@ -42,6 +40,7 @@ class RideViewSet(ModelViewSet):
         return super().list(request)
 
 class NaiveRideViewSet(ModelViewSet):
+    permission_classes = [AdministratorPermission]
     pagination_class = StandardRidePagination
     filter_backends = [RideOrdering, RideFiltering]
     serializer_class = RideListSerializer

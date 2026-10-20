@@ -1,8 +1,10 @@
-from rest_framework import serializers
+from rest_framework.serializers import ( ModelSerializer, CharField, FloatField,
+                                        EmailField, ChoiceField, ValidationError,
+                                        Serializer)
 from ..models import Ride, Statuses
 from .ride_event import RideEventDetailSerializer
 
-class BaseRideSerializer(serializers.ModelSerializer):
+class BaseRideSerializer(ModelSerializer):
     class Meta:
         model = Ride
         fields = [
@@ -23,21 +25,21 @@ class RideListSerializer(BaseRideSerializer):
     class Meta(BaseRideSerializer.Meta):
         fields = BaseRideSerializer.Meta.fields + ['todays_ride_events']
 
-class RideListQueryParamSerializer(serializers.Serializer):
-    sort_by = serializers.CharField(required=False)
-    status = serializers.ChoiceField(
+class RideListQueryParamSerializer(Serializer):
+    sort_by = CharField(required=False)
+    status = ChoiceField(
         choices = Statuses.choices,
         required = False,
         allow_blank = True,
     )
-    rider_email = serializers.EmailField(required = False, allow_blank = True)
-    target_lat = serializers.FloatField(
+    rider_email = EmailField(required = False, allow_blank = True)
+    target_lat = FloatField(
         required = False,
         allow_null = True,
         min_value = -90,
         max_value = 90,
     )
-    target_long = serializers.FloatField(
+    target_long = FloatField(
         required = False,
         allow_null = True,
         min_value = -180,
@@ -49,14 +51,14 @@ class RideListQueryParamSerializer(serializers.Serializer):
     def validate_sort_by(self, value):
         sort_key = value.strip('-') if value.startswith('-') else value
         if sort_key not in self.allowed_sort:
-            raise serializers.ValidationError(f'Invalid sort: {value}')
+            raise ValidationError(f'Invalid sort: {value}')
         elif sort_key == 'distance':
             missing = [
                 name for name in ('target_lat', 'target_long')
                 if self.initial_data.get(name) in (None, '')
             ]
             if missing:
-                raise serializers.ValidationError({
+                raise ValidationError({
                     name: 'Required when sorting by distance.' for name in missing
                 })
         return value

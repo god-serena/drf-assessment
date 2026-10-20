@@ -1,8 +1,9 @@
-from django.db import models
+from django.db.models import (TextChoices, CharField, Model, ForeignKey, Q,
+                              PROTECT, FloatField, DateTimeField, CheckConstraint)
 from django.conf import settings
 
 # Create your models here.
-class Statuses(models.TextChoices):
+class Statuses(TextChoices):
     ASSIGNED = 'ASSIGNED', 'Assigned'
     CANCELLED = 'CANCELLED', 'Cancelled'
     COMPLETED = 'COMPLETED', 'Completed'
@@ -10,33 +11,33 @@ class Statuses(models.TextChoices):
     REQUESTED = 'REQUESTED', 'Requested'
     SCHEDULED = 'SCHEDULED', 'Scheduled'
 
-class Ride(models.Model):
-    status = models.CharField(
+class Ride(Model):
+    status = CharField(
         max_length = 15,
         choices = Statuses.choices,
         default = Statuses.REQUESTED,
         db_default = Statuses.REQUESTED
     )
-    id_rider = models.ForeignKey(
+    id_rider = ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name = 'rider_rides',
-        on_delete = models.PROTECT
+        on_delete = PROTECT
     )
-    id_driver = models.ForeignKey(
+    id_driver = ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name = 'drive_rides',
-        on_delete = models.PROTECT
+        on_delete = PROTECT
     )
-    pickup_latitude = models.FloatField()
-    pickup_longitude = models.FloatField()
-    dropoff_latitude = models.FloatField()
-    dropoff_longitude = models.FloatField()
-    pickup_time = models.DateTimeField()
+    pickup_latitude = FloatField()
+    pickup_longitude = FloatField()
+    dropoff_latitude = FloatField()
+    dropoff_longitude = FloatField()
+    pickup_time = DateTimeField()
     
     class Meta:
         constraints = [
-            models.CheckConstraint(
-                check = models.Q(status__in = Statuses.values),
+            CheckConstraint(
+                check = Q(status__in = Statuses.values),
                 name = 'status_constraint'
             )
         ]

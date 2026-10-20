@@ -18,7 +18,7 @@ class RideFiltering(BaseFilterBackend):
         validated_params = getattr(request, 'validated_query_params', {})
         for param, lookup in self.filter_fields.items():
             value = validated_params.get(param)
-            if value is not None:
+            if value not in (None, ''):
                 filters[lookup] = value
         return queryset.filter(**filters) if filters else queryset
 

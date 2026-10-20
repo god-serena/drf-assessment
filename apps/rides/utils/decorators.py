@@ -13,7 +13,7 @@ def validate_query_params(serializer):
             paginator = getattr(view, 'pagination_class', None)
             request.validated_query_params = {}
 
-            extra = list()
+            extra = []
             if paginator:   
                 pattern = re.compile(r'^\w+_query_param$')
                 matched = list(filter(pattern.search, dir(paginator)))
