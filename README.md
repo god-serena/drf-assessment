@@ -5,7 +5,7 @@ A REST API built with **Django 5.0**, **Django REST Framework (DRF)**, **Postgre
 ---
 
 ## Table of contents
-- [Architecture and tech stack](#architecture-and-tech-stack)
+- [Tech stack](#tech-stack)
 - [Quickstart: local evaluation](#quickstart-local-evaluation)
 - [Developer experience and VS Code integration](#developer-experience-and-vs-code-integration)
 - [API endpoints and browsable API guide](#api-endpoints-and-browsable-api-guide)
@@ -19,13 +19,13 @@ A REST API built with **Django 5.0**, **Django REST Framework (DRF)**, **Postgre
 
 ---
 
-## Architecture and tech stack
+## Tech stack
 
 - **Python 3.12** / **Django 5.0.14** / **Django REST Framework 3.17.2**
-- **PostgreSQL 16 (Alpine)**: Relational database with database-level check constraints and indexed foreign keys.
-- **Astral `uv`**: Ultra-fast, deterministic Python package resolver and virtual environment manager (`uv.lock`).
-- **Docker Compose**: Containerized multi-service setup isolating runtime dependencies and eliminating local environment mismatches.
-- **Django Debug Toolbar**: Configured for performance analysis and query count profiling.
+- **PostgreSQL 16 (Alpine)**
+- **Astral `uv`**
+- **Docker Compose**
+- **Django Debug Toolbar**
 
 ---
 
