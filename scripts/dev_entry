@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+set -e
+
+printenv PATH
+which python
+which uv
+
+until python manage.py shell -c "from django.db import connection; connection.ensure_connection()" > /dev/null 2>&1; do
+  sleep 1
+done
+
+python manage.py migrate --no-input
+
+python manage.py loaddata users
+python manage.py loaddata rides
+
+python scripts/update_fixtures.py
+
+python manage.py shell -c "
+from django.contrib.auth import get_user_model
+User = get_user_model()
+email = 'admin@test.com'
+if not User.objects.filter(email=email).exists():
+    User.objects.create_superuser(
+        email=email,
+        password='123',
+        first_name='Admin',
+        last_name='User',
+        phone_number='+639191234567'
+    )
+"
+exec "$@"
