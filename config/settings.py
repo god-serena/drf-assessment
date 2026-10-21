@@ -33,8 +33,6 @@ DEBUG = env('DEBUG')
 
 AUTH_USER_MODEL = 'users.User'
 
-INTERNAL_IPS = ['127.0.0.1']
-
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
 # Application definition
@@ -133,3 +131,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda DEBUG: DEBUG
+}
