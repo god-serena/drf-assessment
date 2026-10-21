@@ -78,7 +78,7 @@ For reviewers and developers who prefer working directly in an integrated termin
 1. Install the **Dev Containers** (or **Docker**) extension in VS Code.
 2. Open the Docker tab in the VS Code sidebar.
 3. Under **Containers**, right-click `ride-hailing-be-app-1` and select **Attach Visual Studio Code**.
-4. Open an integrated terminal to have direct, instant shell access within the environment.
+4. Open an integrated terminal to have direct, instant shell access within the environment. Try `python manage.py shell_plus --print-sql`.
 
 ---
 
@@ -129,7 +129,7 @@ curl -u admin@test.com:123 "http://localhost:8000/api/rides/?rider_email=alex.ri
 
 ---
 
-## Architectural Deep Dives & Performance Engineering
+## Architectural Deep Dives
 
 ### 1. Strict 2-Query Budget & The Browsable API Illusion
 
@@ -155,17 +155,14 @@ return Ride.objects.prefetch_related(
 When consumed by frontend clients, mobile apps, or `curl` (`Accept: application/json` or `?format=json`), the endpoint executes **strictly 3 queries** (2 queries for data):
 
 ```sql
--- Query 1 (Pagination Count):
 SELECT COUNT(*) AS "__count" FROM "rides_ride";
 
--- Query 2 (Page of Rides):
 SELECT "rides_ride"."id", "rides_ride"."status", "rides_ride"."id_rider_id", 
        "rides_ride"."id_driver_id", "rides_ride"."pickup_latitude", 
        "rides_ride"."pickup_longitude", "rides_ride"."dropoff_latitude", 
        "rides_ride"."dropoff_longitude", "rides_ride"."pickup_time" 
 FROM "rides_ride" ORDER BY "rides_ride"."id" ASC LIMIT 10;
 
--- Query 3 (Prefetched Events within 24 Hours):
 SELECT "rides_rideevent"."id", "rides_rideevent"."ride_id", 
        "rides_rideevent"."description", "rides_rideevent"."created_at" 
 FROM "rides_rideevent" 
@@ -184,11 +181,6 @@ When viewing `/api/rides/` in a web browser, Django Debug Toolbar displays **5 q
 ---
 
 ### 2. Database-Level Haversine Formula for Distance Sorting
-
-#### The Problem
-Pulling hundreds of thousands of records into Python memory to calculate Euclidean or Great-Circle distances breaks pagination, exhausts memory, and destroys response times.
-
-#### The Solution
 `RideOrdering` (`apps/rides/filters/rides.py`) executes the **Haversine formula directly inside PostgreSQL** using Django database functions (`ASin`, `Sqrt`, `Cos`, `Sin`, `Radians`, and `Power`):
 
 $$\Delta\sigma = 2 \arcsin \left( \sqrt{\sin^2\left(\frac{\Delta\text{lat}}{2}\right) + \cos(\text{lat}_1)\cos(\text{lat}_2)\sin^2\left(\frac{\Delta\text{lon}}{2}\right)} \right)$$
