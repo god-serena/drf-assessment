@@ -6,7 +6,6 @@
       "password": "!",
       "last_login": null,
       "is_superuser": false,
-      "username": "alex.rider",
       "first_name": "Alex",
       "last_name": "Rider",
       "is_staff": false,
@@ -14,7 +13,7 @@
       "date_joined": "2026-01-01T09:00:00Z",
       "email": "alex.rider@example.com",
       "phone_number": "+639171234567",
-      "role": "RIDER",
+      "role": "rider",
       "groups": [],
       "user_permissions": []
     }
@@ -26,7 +25,6 @@
       "password": "!",
       "last_login": null,
       "is_superuser": false,
-      "username": "jamie.driver",
       "first_name": "Jamie",
       "last_name": "Driver",
       "is_staff": false,
@@ -34,7 +32,7 @@
       "date_joined": "2026-01-01T09:05:00Z",
       "email": "jamie.driver@example.com",
       "phone_number": "+639181234567",
-      "role": "DRIVER",
+      "role": "driver",
       "groups": [],
       "user_permissions": []
     }

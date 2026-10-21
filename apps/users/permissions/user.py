@@ -1,6 +1,5 @@
 from rest_framework.permissions import BasePermission
-from rest_framework.exceptions import PermissionDenied, NotAuthenticated
-from django.contrib.auth import get_user_model
+from rest_framework.exceptions import NotAuthenticated
 
 from ..models import Roles
 
