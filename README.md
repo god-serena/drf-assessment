@@ -33,14 +33,14 @@ A high-performance RESTful API built with **Django 5.0**, **Django REST Framewor
 
 To ensure the application can be tested immediately on any machine without installing Python or configuring local databases, the entire stack is containerized with an automated startup and seeding sequence.
 
-### 1. Boot the Stack
+### 1. Start the stack
 Clone the repository and run:
 
 ```bash
 docker compose up -d --build
 ```
 
-### 2. What Happens Automatically on Startup
+### 2. What happens on startup
 The container entrypoint (`scripts/dev_entry`) runs pipeline:
 1. **Databse Readiness**: Polls the database socket until PostgreSQL is accepting traffic.
 2. **Schema Migrations**: Applies all database migrations automatically (`migrate --no-input`).
