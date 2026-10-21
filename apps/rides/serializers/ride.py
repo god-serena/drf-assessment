@@ -49,7 +49,7 @@ class RideListQueryParamSerializer(Serializer):
     allowed_sort = ['id', 'pickup_time', 'distance']
 
     def validate_sort_by(self, value):
-        sort_key = value.strip('-') if value.startswith('-') else value
+        sort_key = value.strip('-')
         if sort_key not in self.allowed_sort:
             raise ValidationError(f'Invalid sort: {value}')
         elif sort_key == 'distance':
