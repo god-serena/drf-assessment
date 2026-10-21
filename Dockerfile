@@ -10,7 +10,7 @@ RUN uv sync --locked
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY --chmod=755 scripts/dev_entry /app/scripts/dev_entry/
+COPY --chmod=755 scripts/dev_entry /app/scripts/dev_entry
 
 ENTRYPOINT ["/app/scripts/dev_entry"]
 
