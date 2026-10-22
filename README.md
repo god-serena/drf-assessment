@@ -327,6 +327,6 @@ fifth_qs = fourth_qs.annotate(
 )
 
 final = fifth_qs.values('Month','Driver').annotate(
-    trips = Count('time_diff', filter = Q(time_diff__gt = timezone.timedelta(hours = 1))) 
-).values('Month','Driver', 'trips')
+    Trips (Greater than 1) = Count('time_diff', filter = Q(time_diff__gt = timezone.timedelta(hours = 1))) 
+).values('Month','Driver', 'Trips (Greater than 1)')
 ```
