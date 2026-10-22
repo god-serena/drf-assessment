@@ -21,7 +21,7 @@ class RideViewSet(ModelViewSet):
     pagination_class = StandardRidePagination
     filter_backends = [RideOrdering, RideFiltering]
     serializer_class = RideListSerializer
-
+    
     def get_queryset(self):
         time_threshold = timezone.now() - timezone.timedelta(hours=24)
         

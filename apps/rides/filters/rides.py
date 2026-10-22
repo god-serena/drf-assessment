@@ -39,7 +39,7 @@ class RideOrdering(OrderingFilter):
         if ordering and any(field.lstrip('-') == 'distance' for field in ordering):
             queryset = queryset.annotate(distance=self.get_distance_query(request))
 
-        return queryset.order_by(*ordering) if ordering else queryset.order_by('id')
+        return queryset.order_by(*ordering) if ordering else queryset
 
     def get_distance_query(self, request):
         validated_params = request.validated_query_params
