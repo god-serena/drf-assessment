@@ -44,8 +44,8 @@ docker compose up -d --build
 The container entrypoint (`scripts/dev_entry`) runs a pipeline:
 1. Polls the database socket until PostgreSQL is accepting traffic.
 2. Applies all database migrations automatically (`migrate --no-input`).
-3. Loads `users` followed by `rides` (102 objects total).
-4. Re-timestamps ride events to within the last 24 hours relative to startup time. This guarantees that **Requirement #4**'s 24-hour event filter is immediately demonstrable.
+3. Loads `users` followed by `rides` (111 objects total). The fixtures include pickup/dropoff event pairs for completed rides, with durations both over and under one hour.
+4. Shifts all events for roughly half of the rides together, preserving event durations while bringing their latest event into the last 24 hours. At least one ride with multiple events is included so the recent-event response is immediately demonstrable.
 5. Provisions the evaluation administrator account if it does not already exist.
 
 ### 3. Access the API
@@ -230,10 +230,103 @@ Rather than subclassing `AbstractUser` (which includes a `username` column), [`U
 
 ### 5. Automated startup and relative date shifting
 
-Fixture timestamps are fixed, so events eventually fall outside the "last 24 hours" filter. At startup, [`scripts/update_fixtures.py`](scripts/update_fixtures.py) randomly selects roughly half of the fixture event IDs and gives them a timestamp within the previous 24 hours. The others retain their historical dates, allowing recent and older events to be compared. After a day without a restart, refreshed events may age out of the window.
+Fixture timestamps are fixed, so events eventually fall outside the "last 24 hours" filter. At startup, [`scripts/update_fixtures.py`](scripts/update_fixtures.py) selects roughly half of the rides and applies the same time shift to every event for each selected ride. The latest event for each selected ride lands within the previous 24 hours, preserving pickup-to-dropoff durations. When available, the first ride with multiple events is guaranteed to be recent for the API demo; other rides retain historical dates. After a day without a restart, refreshed events may age out of the window.
 
 ---
 
 ## Bonus SQL report
+```sql
+WITH trip_durations AS (
+    SELECT
+        r.id AS ride_id,
+        r.id_driver_id,
+        pickup.created_at AS pickup_time,
+        dropoff.created_at AS dropoff_time
+    FROM rides_ride r
+    JOIN rides_rideevent pickup 
+        ON pickup.ride_id = r.id 
+       AND pickup.description = 'Status changed to pickup'
+    JOIN rides_rideevent dropoff 
+        ON dropoff.ride_id = r.id 
+       AND dropoff.description = 'Status changed to dropoff'
+    WHERE dropoff.created_at - pickup.created_at > INTERVAL '1 hour'
+)
+SELECT
+    TO_CHAR(t.pickup_time, 'YYYY-MM') AS "Month",
+    CONCAT(u.first_name, ' ', LEFT(u.last_name, 1)) AS "Driver",
+    COUNT(DISTINCT t.ride_id) AS "Count of Trips > 1 hr"
+FROM trip_durations t
+JOIN users_user u ON u.id = t.id_driver_id
+GROUP BY 1, 2
+ORDER BY "Month" ASC, "Driver" ASC;
+```
 
-*(Reserved for a bonus report on trips exceeding one hour, grouped by month and driver.)*
+#### Output Verification
+
+The query can be executed directly inside the PostgreSQL container:
+
+```bash
+docker compose exec db psql -U postgres -d ride_hailing -c '
+WITH trip_durations AS (
+    SELECT
+        r.id AS ride_id,
+        r.id_driver_id,
+        pickup.created_at AS pickup_time,
+        dropoff.created_at AS dropoff_time
+    FROM rides_ride r
+    JOIN rides_rideevent pickup 
+        ON pickup.ride_id = r.id 
+       AND pickup.description = '\''Status changed to pickup'\''
+    JOIN rides_rideevent dropoff 
+        ON dropoff.ride_id = r.id 
+       AND dropoff.description = '\''Status changed to dropoff'\''
+    WHERE dropoff.created_at - pickup.created_at > INTERVAL '\''1 hour'\''
+)
+SELECT
+    TO_CHAR(t.pickup_time, '\''YYYY-MM'\'') AS "Month",
+    CONCAT(u.first_name, '\'' '\'', LEFT(u.last_name, 1)) AS "Driver",
+    COUNT(DISTINCT t.ride_id) AS "Count of Trips > 1 hr"
+FROM trip_durations t
+JOIN users_user u ON u.id = t.id_driver_id
+GROUP BY 1, 2
+ORDER BY "Month" ASC, "Driver" ASC;
+'
+```
+
+**Live database output:**
+```text
+  Month  | Driver  | Count of Trips > 1 hr 
+---------+---------+-----------------------
+ 2026-01 | Jamie D |                     2
+ 2026-10 | Jamie D |                     3
+(2 rows)
+```
+---
+
+### Working with Django
+```python
+pickup = RideEvent.objects.filter(ride = OuterRef('pk'), description = 'Status changed to pickup').values('created_at')[:1]
+drop = RideEvent.objects.filter(ride = OuterRef('pk'), description = 'Status changed to dropoff').values('created_at')[:1]
+
+
+first_qs = Ride.objects.annotate(pickup_event = Subquery(pickup), dropoff_event=Subquery(drop))
+
+second_qs = first_qs.annotate(time_diff = F('dropoff_event') - F('pickup_event'))
+
+third_qs = second_qs.filter(time_diff__isnull = False , time_diff__gt = timezone.timedelta(hours = 1))
+
+fourth_qs = third_qs.annotate(
+    year_extract = ExtractYear('pickup_event'),
+    month_extract = ExtractMonth('pickup_event')
+).annotate(Month = 
+    Concat(F('year_extract'), Value('-'), F('month_extract'), output_field = CharField())
+)
+
+fifth_qs = fourth_qs.annotate(
+    Driver = Concat(F('id_driver__first_name'), Value(' '), Left('id_driver__last_name', 1), output_field = CharField())
+)
+
+final = fifth_qs.values('Month','Driver').annotate(
+    trips = Count('time_diff', filter = Q(time_diff__gt = timezone.timedelta(hours = 1))) 
+).values('Month','Driver', 'trips')
+```
