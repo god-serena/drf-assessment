@@ -15,17 +15,16 @@ A REST API built with **Django 5.0**, **Django REST Framework (DRF)**, **Postgre
   - [3. Dynamic query parameter reflection and validation](#3-dynamic-query-parameter-reflection-and-validation)
   - [4. Schema precision with a custom user model](#4-schema-precision-with-a-custom-user-model)
   - [5. Automated startup and relative date shifting](#5-automated-startup-and-relative-date-shifting)
+  - [6. Status transition state machine and audit trail](#6-status-transition-state-machine-and-audit-trail)
 - [Bonus SQL report](#bonus-sql-report)
 
 ---
 
 ## Tech stack
 
-- **Python 3.12** / **Django 5.0.14** / **Django REST Framework 3.17.2**
-- **PostgreSQL 16 (Alpine)**
-- **Astral `uv`**
-- **Docker Compose**
-- **Django Debug Toolbar**
+- **Backend:** Python 3.12, Django 5.0.14, Django REST Framework 3.17.2, PostgreSQL 16 (Alpine), Astral `uv`
+- **Frontend:** Vue 3 (Composition API, pure JavaScript), Vite, Pinia, Vue Router, Tailwind CSS, Lucide icons
+- **Orchestration & Tooling:** Docker Compose, Django Debug Toolbar
 
 ---
 
@@ -41,15 +40,17 @@ docker compose up -d --build
 ```
 
 ### 2. What happens on startup
-The container entrypoint (`scripts/dev_entry`) runs a pipeline:
+The container entrypoint (`api/scripts/dev_entry`) runs a startup pipeline:
 1. Polls the database socket until PostgreSQL is accepting traffic.
 2. Applies all database migrations automatically (`migrate --no-input`).
 3. Loads `users` followed by `rides` (111 objects total). The fixtures include pickup/dropoff event pairs for completed rides, with durations both over and under one hour.
-4. Shifts all events for roughly half of the rides together, preserving event durations while bringing their latest event into the last 24 hours. At least one ride with multiple events is included so the recent-event response is immediately demonstrable.
+4. Shifts all events for roughly half of the rides together, bringing their latest event into the last 24 hours while preserving event durations. At least one ride with multiple events is included so the recent-event response is immediately demonstrable.
 5. Provisions the evaluation administrator account if it does not already exist.
+6. The admin console container starts the Vite frontend on port 3000.
 
-### 3. Access the API
-- **Root API URL:** [http://localhost:8000/api/](http://localhost:8000/api/)
+### 3. Access the application
+- **Admin UI Console:** [http://localhost:3000](http://localhost:3000)
+- **Backend API & Browsable API:** [http://localhost:8089/api/](http://localhost:8089/api/)
 - **Default Evaluation Credentials:**
   - **Email:** `admin@test.com`
   - **Password:** `123`
@@ -63,13 +64,16 @@ You can run any Django command directly through Docker Compose:
 
 ```bash
 # Run Django system checks
-docker compose exec app python manage.py check
+docker compose exec api python manage.py check
+
+# Run automated test suites
+docker compose exec api python manage.py test apps.users apps.rides
 
 # Open a Django shell
-docker compose exec app python manage.py shell
+docker compose exec api python manage.py shell
 
 # View live container logs
-docker compose logs -f app
+docker compose logs -f api
 ```
 
 ### Container development with VS Code
@@ -77,7 +81,7 @@ For reviewers and developers who prefer working directly in an integrated termin
 
 1. Install the **Dev Containers** (or **Docker**) extension in VS Code.
 2. Open the Docker tab in the VS Code sidebar.
-3. Under **Containers**, right-click `ride-hailing-be-app-1` and select **Attach Visual Studio Code**.
+3. Under **Containers**, right-click `ride-hailing-be-api-1` and select **Attach Visual Studio Code**.
 4. Open an integrated terminal to have direct, instant shell access within the environment. Try `python manage.py shell_plus --print-sql`.
 
 ---
@@ -90,14 +94,14 @@ The viewsets listed below use `AdministratorPermission`: requests need an authen
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | [`/api/rides/`](http://localhost:8000/api/rides/) | Optimized list of rides with 24-hour prefetched events, filtering, sorting, and pagination. |
-| `POST` | [`/api/rides/`](http://localhost:8000/api/rides/) | Create a new ride. |
+| `GET` | [`/api/rides/`](http://localhost:8089/api/rides/) | Optimized list of rides with 24-hour prefetched events, filtering, sorting, and pagination. |
+| `POST` | [`/api/rides/`](http://localhost:8089/api/rides/) | Create a new ride. |
 | `GET, PUT, PATCH, DELETE` | `/api/rides/{id}/` | Retrieve (with full chronological event timeline), update, or delete a specific ride. |
 | `POST` | `/api/rides/{id}/status/` | Transition ride status according to allowed state graph with atomic event creation. |
-| `GET` | [`/api/naive/`](http://localhost:8000/api/naive/) | Naive comparison endpoint demonstrating the unoptimized N+1 query problem. |
-| `GET, POST` | [`/api/users/`](http://localhost:8000/api/users/) | List or create users. |
+| `GET` | [`/api/naive/`](http://localhost:8089/api/naive/) | Naive comparison endpoint demonstrating the unoptimized N+1 query problem. |
+| `GET, POST` | [`/api/users/`](http://localhost:8089/api/users/) | List or create users. |
 | `GET, PUT, PATCH, DELETE` | `/api/users/{id}/` | Retrieve, update, or delete a specific user. |
-| `GET` | [`/api/ride-events/`](http://localhost:8000/api/ride-events/) | Read-only list of ride events. |
+| `GET` | [`/api/ride-events/`](http://localhost:8089/api/ride-events/) | Read-only list of ride events. |
 | `GET` | `/api/ride-events/{id}/` | Retrieve a specific ride event with its audit correction history. |
 | `POST` | `/api/ride-events/{id}/correct/` | Correct event occurrence time with chronological boundary checks and audit trail. |
 
@@ -121,13 +125,23 @@ The ride list endpoint supports strict query parameter validation. Undeclared qu
 
 ```bash
 # Filter completed rides sorted by pickup time
-curl -u admin@test.com:123 "http://localhost:8000/api/rides/?status=COMPLETED&sort_by=pickup_time"
+curl -u admin@test.com:123 "http://localhost:8089/api/rides/?status=COMPLETED&sort_by=pickup_time"
 
 # Sort rides by distance from target GPS coordinates
-curl -u admin@test.com:123 "http://localhost:8000/api/rides/?sort_by=distance&target_lat=14.5547&target_long=121.0244"
+curl -u admin@test.com:123 "http://localhost:8089/api/rides/?sort_by=distance&target_lat=14.5547&target_long=121.0244"
 
 # Filter by rider email with custom page size
-curl -u admin@test.com:123 "http://localhost:8000/api/rides/?rider_email=alex.rider@example.com&ps=15"
+curl -u admin@test.com:123 "http://localhost:8089/api/rides/?rider_email=alex.rider@example.com&ps=15"
+
+# Transition ride status to ASSIGNED with a driver
+curl -X POST -u admin@test.com:123 "http://localhost:8089/api/rides/1/status/" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "ASSIGNED", "id_driver": 2}'
+
+# Correct a ride event's actual occurrence time with an audit reason
+curl -X POST -u admin@test.com:123 "http://localhost:8089/api/ride-events/1/correct/" \
+  -H "Content-Type: application/json" \
+  -d '{"occurred_at": "2026-01-01T09:10:00Z", "reason": "Driver connectivity delay"}'
 ```
 
 ---
@@ -140,7 +154,7 @@ curl -u admin@test.com:123 "http://localhost:8000/api/rides/?rider_email=alex.ri
 The assessment calls for returning rides and their recent events within a two-query data budget (or three with pagination's COUNT query). The serializer exposes rider and driver IDs, not nested user records.
 
 #### Implementation
-[`RideViewSet.get_queryset()`](apps/rides/views/ride.py) uses Django ORM's `Prefetch` with `to_attr`:
+[`RideViewSet.get_queryset()`](api/apps/rides/views/ride.py) uses Django ORM's `Prefetch` with `to_attr`:
 
 ```python
 time_threshold = timezone.now() - timezone.timedelta(hours=24)
@@ -191,7 +205,7 @@ annotate rides with the computed distance
 sort by distance in SQL (reverse for -distance), then paginate
 ```
 
-The ORM implementation is in [`apps/rides/filters/rides.py`](apps/rides/filters/rides.py), in `RideOrdering.get_distance_query()` and `RideOrdering.filter_queryset()`. Computing the sort in SQL avoids loading every ride into Python before pagination; a computed distance sort is **not** automatically index-backed.
+The ORM implementation is in [`api/apps/rides/filters/rides.py`](api/apps/rides/filters/rides.py), in `RideOrdering.get_distance_query()` and `RideOrdering.filter_queryset()`. Computing the sort in SQL avoids loading every ride into Python before pagination; a computed distance sort is **not** automatically index-backed.
 
 #### Formula & Algorithmic References
 
@@ -209,7 +223,7 @@ $$d = R \cdot c \quad (R = 6371.0\text{ km})$$
 
 ### 3. Dynamic query parameter reflection and validation
 
-Standard DRF serializers silently drop unexpected query parameters during `to_internal_value()`. To prevent silent API misuse, [`@validate_query_params`](apps/rides/utils/decorators.py) enforces strict validation:
+Standard DRF serializers silently drop unexpected query parameters during `to_internal_value()`. To prevent silent API misuse, [`@validate_query_params`](api/apps/rides/utils/decorators.py) enforces strict validation:
 
 1. Dynamically inspects the view's active `pagination_class` using regex over `dir(paginator)` to extract active query parameters (e.g. `p`, `ps`).
 2. Combines declared serializer fields (`sort_by`, `status`, `rider_email`, `target_lat`, `target_long`) with discovered pagination and debug parameters.
@@ -220,7 +234,7 @@ Standard DRF serializers silently drop unexpected query parameters during `to_in
 
 ### 4. Schema precision with a custom user model
 
-Rather than subclassing `AbstractUser` (which includes a `username` column), [`User`](apps/users/models/users.py) subclasses **`AbstractBaseUser`** and **`PermissionsMixin`**:
+Rather than subclassing `AbstractUser` (which includes a `username` column), [`User`](api/apps/users/models/users.py) subclasses **`AbstractBaseUser`** and **`PermissionsMixin`**:
 
 - **Schema:** The user table has `id`, `email`, `role`, `first_name`, `last_name`, `phone_number`, and authentication fields (including passwords and permission flags).
 - **Database constraints:**
@@ -232,7 +246,25 @@ Rather than subclassing `AbstractUser` (which includes a `username` column), [`U
 
 ### 5. Automated startup and relative date shifting
 
-Fixture timestamps are fixed, so events eventually fall outside the "last 24 hours" filter. At startup, [`scripts/update_fixtures.py`](scripts/update_fixtures.py) selects roughly half of the rides and applies the same time shift to every event for each selected ride. The latest event for each selected ride lands within the previous 24 hours, preserving pickup-to-dropoff durations. When available, the first ride with multiple events is guaranteed to be recent for the API demo; other rides retain historical dates. After a day without a restart, refreshed events may age out of the window.
+Fixture timestamps are fixed, so events eventually fall outside the "last 24 hours" filter. At startup, [`api/scripts/update_fixtures.py`](api/scripts/update_fixtures.py) selects roughly half of the rides and applies the same time shift to every event for each selected ride. The latest event for each selected ride lands within the previous 24 hours, preserving pickup-to-dropoff durations. When available, the first ride with multiple events is guaranteed to be recent for the API demo; other rides retain historical dates. After a day without a restart, refreshed events may age out of the window.
+
+---
+
+### 6. Status transition state machine and audit trail
+
+#### State machine & concurrency locking
+The ride lifecycle follows strict state transitions:
+`REQUESTED` $\rightarrow$ `ASSIGNED` $\rightarrow$ `ENROUTE` $\rightarrow$ `PICKED_UP` $\rightarrow$ `COMPLETED` (with `CANCELLED` permitted from non-terminal states).
+- Handled atomically in the service layer ([`api/apps/rides/services.py`](api/apps/rides/services.py)) via `transition_ride_status`.
+- Database row locking (`select_for_update`) prevents race conditions during concurrent transitions.
+- Validates transition-specific constraints: driver assignment requires a driver-role user, cancellation requires a reason, and pickup requires a valid `pickup_time`.
+
+#### Auditable timestamp corrections
+To handle delayed driver submissions or offline connectivity delays:
+- `created_at` records the immutable server receipt timestamp.
+- `occurred_at` represents the physical event occurrence timestamp.
+- `POST /api/ride-events/{id}/correct/` allows admins to update `occurred_at` subject to adjacent event boundary constraints and future-time prevention.
+- Every edit persists a `RideEventCorrection` audit record capturing the editor, previous timestamp, new timestamp, and mandatory reason.
 
 ---
 
