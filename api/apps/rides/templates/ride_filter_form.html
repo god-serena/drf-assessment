@@ -1,0 +1,71 @@
+<section>
+  <h2>Ride filters</h2>
+  <p>
+    Filter by rider email or status. To sort by distance, enter both coordinates,
+    apply the form, then choose distance in the Ordering controls.
+  </p>
+
+  <form method="get" action="{{ request.path }}">
+    {{ request.path }}
+    {# Keep ordering and page size when applying filters; omit page number to restart at page 1. #}
+    {% if params.sort_by %}
+      <input type="hidden" name="sort_by" value="{{ params.sort_by }}">
+    {% endif %}
+    {% if params.ps %}
+      <input type="hidden" name="ps" value="{{ params.ps }}">
+    {% endif %}
+
+    <div>
+      <label for="ride-filter-rider-email">Rider email</label>
+      <input
+        id="ride-filter-rider-email"
+        type="email"
+        name="rider_email"
+        value="{{ params.rider_email|default:'' }}"
+      >
+    </div>
+
+    <div>
+      <label for="ride-filter-status">Status</label>
+      <select id="ride-filter-status" name="status">
+        <option value="" {% if not params.status %}selected{% endif %}>Any status</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if params.status == value %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <fieldset>
+      <legend>Distance origin (required when sorting by distance)</legend>
+      <div>
+        <label for="ride-filter-target-lat">Latitude</label>
+        <input
+          id="ride-filter-target-lat"
+          type="number"
+          name="target_lat"
+          min="-90"
+          max="90"
+          step="any"
+          value="{{ params.target_lat|default:'' }}"
+        >
+      </div>
+      <div>
+        <label for="ride-filter-target-long">Longitude</label>
+        <input
+          id="ride-filter-target-long"
+          type="number"
+          name="target_long"
+          min="-180"
+          max="180"
+          step="any"
+          value="{{ params.target_long|default:'' }}"
+        >
+      </div>
+    </fieldset>
+
+    <button type="submit">Apply filters</button>
+    <a href="{{ request.path }}">Reset</a>
+  </form>
+</section>
