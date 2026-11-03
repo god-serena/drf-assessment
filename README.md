@@ -92,12 +92,14 @@ The viewsets listed below use `AdministratorPermission`: requests need an authen
 | :--- | :--- | :--- |
 | `GET` | [`/api/rides/`](http://localhost:8000/api/rides/) | Optimized list of rides with 24-hour prefetched events, filtering, sorting, and pagination. |
 | `POST` | [`/api/rides/`](http://localhost:8000/api/rides/) | Create a new ride. |
-| `GET, PUT, PATCH, DELETE` | `/api/rides/{id}/` | Retrieve, update, or delete a specific ride. |
+| `GET, PUT, PATCH, DELETE` | `/api/rides/{id}/` | Retrieve (with full chronological event timeline), update, or delete a specific ride. |
+| `POST` | `/api/rides/{id}/status/` | Transition ride status according to allowed state graph with atomic event creation. |
 | `GET` | [`/api/naive/`](http://localhost:8000/api/naive/) | Naive comparison endpoint demonstrating the unoptimized N+1 query problem. |
 | `GET, POST` | [`/api/users/`](http://localhost:8000/api/users/) | List or create users. |
 | `GET, PUT, PATCH, DELETE` | `/api/users/{id}/` | Retrieve, update, or delete a specific user. |
-| `GET, POST` | [`/api/ride-events/`](http://localhost:8000/api/ride-events/) | List or create ride events. |
-| `GET, PUT, PATCH, DELETE` | `/api/ride-events/{id}/` | Retrieve, update, or delete a specific ride event. |
+| `GET` | [`/api/ride-events/`](http://localhost:8000/api/ride-events/) | Read-only list of ride events. |
+| `GET` | `/api/ride-events/{id}/` | Retrieve a specific ride event with its audit correction history. |
+| `POST` | `/api/ride-events/{id}/correct/` | Correct event occurrence time with chronological boundary checks and audit trail. |
 
 ---
 
@@ -107,7 +109,7 @@ The ride list endpoint supports strict query parameter validation. Undeclared qu
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `status` | string | Exact filter on ride status (`ASSIGNED`, `CANCELLED`, `COMPLETED`, `IN_PROGRESS`, `REQUESTED`, `SCHEDULED`). |
+| `status` | string | Exact filter on ride status (`ASSIGNED`, `CANCELLED`, `COMPLETED`, `ENROUTE`, `PICKED_UP`, `REQUESTED`, `SCHEDULED`). |
 | `rider_email` | string | Filter rides by the rider's email address (via foreign key join). |
 | `sort_by` | string | Sort field: `pickup_time`, `-pickup_time`, `distance`, `-distance`. |
 | `target_lat` | float | Target latitude between `-90.0` and `90.0` (required when `sort_by=distance`). |
