@@ -8,3 +8,8 @@ wheels/
 .env
 assessment.pdf
 .vscode
+/admin/node_modules/
+/admin/dist/
+AGENTS.md
+AUDIT.md
+assessment2.pdf

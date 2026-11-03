@@ -7,8 +7,8 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
-  app:
-    build: .
+  api:
+    build: ./api
     environment:
       DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
     env_file:
@@ -19,8 +19,22 @@ services:
       - "${DJANGO_PORT:-8000}:8000"
     volumes:
       - type: bind
-        source: .
+        source: ./api
         target: /app
       - /app/.venv
+  admin:
+    build: ./admin
+    environment:
+      VITE_BACKEND_URL: "http://api:8000"
+      VITE_API_BASE_URL: "${VITE_API_BASE_URL:-/api}"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - type: bind
+        source: ./admin
+        target: /app
+      - /app/node_modules
+    depends_on:
+      - api
 volumes:
   pg_data:
